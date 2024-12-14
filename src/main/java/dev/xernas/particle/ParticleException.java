@@ -1,4 +1,4 @@
-package dev.xernas;
+package dev.xernas.particle;
 
 public class ParticleException extends Exception {
 

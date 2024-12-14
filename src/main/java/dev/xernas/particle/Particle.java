@@ -1,7 +1,8 @@
-package dev.xernas;
+package dev.xernas.particle;
 
-import dev.xernas.utils.ByteBufferInputStream;
+import dev.xernas.particle.utils.ByteBufferInputStream;
 
+import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -19,8 +20,10 @@ public class Particle {
 
     public Particle(DataInputStream in, int length) throws ParticleException {
         try {
-            ByteBuffer buffer = ByteBuffer.wrap(in.readNBytes(length));
-            this.in = new DataInputStream(new ByteBufferInputStream(buffer));
+            // ByteBuffer buffer = ByteBuffer.wrap(in.readNBytes(length));
+            byte[] bytes = new byte[length];
+            in.readFully(bytes);
+            this.in = new DataInputStream(new ByteArrayInputStream(bytes));
             this.out = null;
         } catch (IOException e) {
             throw new ParticleException("Couldn't create length input stream", e);
@@ -129,6 +132,22 @@ public class Particle {
         return readShort(true);
     }
 
+    public void writeBoolean(boolean value) throws WriteException {
+        try {
+            out().writeBoolean(value);
+        } catch (IOException e) {
+            throw new WriteException("Failed to write boolean", e);
+        }
+    }
+
+    public boolean readBoolean() throws ReadException {
+        try {
+            return in().readBoolean();
+        } catch (IOException e) {
+            throw new ReadException("Failed to read boolean", e);
+        }
+    }
+
     public void writeBytes(byte[] bytes) throws WriteException {
         try {
             out().write(bytes);
@@ -144,6 +163,23 @@ public class Particle {
             return bytes;
         } catch (Exception e) {
             throw new ReadException("Failed to read bytes", e);
+        }
+    }
+
+    public int readByte(boolean signed) throws ReadException {
+        try {
+            if (signed) return in().readByte();
+            else return in().readUnsignedByte();
+        } catch (IOException e) {
+            throw new ReadException("Failed to read byte", e);
+        }
+    }
+
+    public void writeByte(int value) throws WriteException {
+        try {
+            out().writeByte(value);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 

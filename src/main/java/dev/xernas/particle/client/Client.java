@@ -1,15 +1,16 @@
-package dev.xernas.client;
+package dev.xernas.particle.client;
 
-import dev.xernas.Particle;
-import dev.xernas.client.exceptions.ClientException;
-import dev.xernas.message.MessageIO;
-import dev.xernas.tasks.PingTask;
-import dev.xernas.tasks.Task;
+import dev.xernas.particle.Particle;
+import dev.xernas.particle.client.exceptions.ClientException;
+import dev.xernas.particle.message.MessageIO;
+import dev.xernas.particle.tasks.PingTask;
+import dev.xernas.particle.tasks.Task;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -115,6 +116,10 @@ public abstract class Client<I, O> {
 
     public String getIPAddress() {
         return socket.getInetAddress().getHostAddress();
+    }
+
+    public String getRemoteIPAddress() {
+        return ((InetSocketAddress) socket.getRemoteSocketAddress()).getAddress().getHostName();
     }
 
     public static <I, O> Client<I, O> wrap(Socket socket) throws IOException {

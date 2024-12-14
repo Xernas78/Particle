@@ -1,12 +1,12 @@
-package dev.xernas.server;
+package dev.xernas.particle.server;
 
-import dev.xernas.Particle;
-import dev.xernas.client.Client;
-import dev.xernas.client.exceptions.ClientException;
-import dev.xernas.message.MessageIO;
-import dev.xernas.server.exceptions.ServerException;
-import dev.xernas.tasks.PingTask;
-import dev.xernas.tasks.Task;
+import dev.xernas.particle.Particle;
+import dev.xernas.particle.client.Client;
+import dev.xernas.particle.client.exceptions.ClientException;
+import dev.xernas.particle.message.MessageIO;
+import dev.xernas.particle.server.exceptions.ServerException;
+import dev.xernas.particle.tasks.PingTask;
+import dev.xernas.particle.tasks.Task;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -38,12 +38,11 @@ public abstract class Server<I, O> {
                 Client<I, O> client = Client.wrap(server.accept());
                 new Thread(new ClientHandler<>(client.getParticle(), this, client)).start();
             }
-
-            onServerStop();
         } catch (IOException e) {
             throw new ServerException("Failed to start server", e);
         } finally {
             shutdownScheduler();
+            onServerStop();
         }
     }
 
@@ -122,14 +121,10 @@ public abstract class Server<I, O> {
         return true;
     }
 
-    public final void ping() {
+    public final void ping() throws ServerException {
         List<UUID> toPing = new ArrayList<>(connected.keySet());
         for (UUID clientId : toPing) {
-            try {
-                if (!ping(clientId)) forceDisconnectClient(clientId);
-            } catch (ServerException e) {
-                System.out.println(e.getMessage());
-            }
+            if (!ping(clientId)) forceDisconnectClient(clientId);
         }
     }
 

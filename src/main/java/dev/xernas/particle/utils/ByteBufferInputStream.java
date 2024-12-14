@@ -1,4 +1,4 @@
-package dev.xernas.utils;
+package dev.xernas.particle.utils;
 
 import java.io.IOException;
 import java.io.InputStream;

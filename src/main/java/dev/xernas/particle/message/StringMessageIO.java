@@ -1,6 +1,6 @@
-package dev.xernas.message;
+package dev.xernas.particle.message;
 
-import dev.xernas.Particle;
+import dev.xernas.particle.Particle;
 
 public class StringMessageIO implements MessageIO<String, String> {
 

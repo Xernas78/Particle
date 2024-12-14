@@ -1,8 +1,8 @@
-package dev.xernas.tasks;
+package dev.xernas.particle.tasks;
 
-import dev.xernas.client.exceptions.ClientException;
-import dev.xernas.server.Server;
-import dev.xernas.server.exceptions.ServerException;
+import dev.xernas.particle.client.exceptions.ClientException;
+import dev.xernas.particle.server.Server;
+import dev.xernas.particle.server.exceptions.ServerException;
 
 import java.util.concurrent.TimeUnit;
 
@@ -20,9 +20,6 @@ public interface Task {
         return () -> {
             try {
                 run();
-                if (Server.isDebugEnabled()) {
-                    System.out.println("Task executed");
-                }
             } catch (ServerException | ClientException e) {
                 if (Server.isDebugEnabled()) {
                     e.printStackTrace();

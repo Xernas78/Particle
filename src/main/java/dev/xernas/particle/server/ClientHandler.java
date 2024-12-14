@@ -1,10 +1,11 @@
-package dev.xernas.server;
+package dev.xernas.particle.server;
 
-import dev.xernas.Particle;
-import dev.xernas.client.Client;
-import dev.xernas.message.MessageIO;
-import dev.xernas.server.exceptions.ServerException;
+import dev.xernas.particle.Particle;
+import dev.xernas.particle.client.Client;
+import dev.xernas.particle.message.MessageIO;
+import dev.xernas.particle.server.exceptions.ServerException;
 
+import java.io.IOException;
 import java.util.UUID;
 
 public class ClientHandler<I, O> implements Runnable {
@@ -23,17 +24,22 @@ public class ClientHandler<I, O> implements Runnable {
     public void run() {
         try {
             UUID clientId = server.newConnectedClient(client);
-            MessageIO<I, O> messageIO = server.getMessageIO(clientId);
             server.onClientConnect(clientId, particle);
+            MessageIO<I, O> messageIO = server.getMessageIO(clientId);
             try {
                 while (client.isConnected()) {
                     try {
-                        I message = messageIO.read(particle);
-                        if (message != null) server.onMessage(clientId, message, particle);
+                        if (particle.in().available() > 0) {
+                            I message = messageIO.read(particle);
+                            if (message != null) server.onMessage(clientId, message, particle);
+                        }
                     } catch (Particle.ReadException e) {
                         if (Server.isDebugEnabled()) {
+                            e.printStackTrace();
                             System.out.println("Failed to read message: " + e.getMessage());
                         }
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
                     }
                 }
             } finally {

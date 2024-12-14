@@ -1,7 +1,8 @@
-package dev.xernas.tasks;
+package dev.xernas.particle.tasks;
 
-import dev.xernas.client.Client;
-import dev.xernas.server.Server;
+import dev.xernas.particle.client.Client;
+import dev.xernas.particle.server.Server;
+import dev.xernas.particle.server.exceptions.ServerException;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.TimeUnit;
@@ -20,7 +21,7 @@ public class PingTask<I, O> implements Task {
     }
 
     @Override
-    public void run() {
+    public void run() throws ServerException {
         if (server != null) server.ping();
         if (client != null) client.ping();
     }

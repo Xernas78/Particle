@@ -1,6 +1,6 @@
-package dev.xernas.client.exceptions;
+package dev.xernas.particle.client.exceptions;
 
-import dev.xernas.ParticleException;
+import dev.xernas.particle.ParticleException;
 
 public class ClientException extends ParticleException {
 
