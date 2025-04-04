@@ -3,176 +3,38 @@ package dev.xernas.particle.client;
 import dev.xernas.particle.Particle;
 import dev.xernas.particle.client.exceptions.ClientException;
 import dev.xernas.particle.message.MessageIO;
-import dev.xernas.particle.tasks.PingTask;
 import dev.xernas.particle.tasks.Task;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
-public abstract class Client<I, O> {
+public interface Client<I, O> {
 
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
+    void connect() throws ClientException;
 
-    private boolean initialized = false;
-    private Socket socket;
-    private Particle particle;
+    void disconnect() throws ClientException;
 
-    public final void connect() throws ClientException {
-        if (initialized) throw new ClientException("Client already initialized");
-        try (Socket socket = new Socket(getHost(), getPort())) {
-            this.socket = socket;
-            this.particle = new Particle(new DataInputStream(socket.getInputStream()), new DataOutputStream(socket.getOutputStream()));
-            onConnect(particle);
+    void ping();
 
-            PingTask<I, O> pingTask = new PingTask<>(this);
-            scheduler.scheduleAtFixedRate(pingTask.asRunnable(), pingTask.getInitialDelay(), pingTask.getPeriod(), pingTask.getTimeUnit());
+    void send(O message) throws ClientException;
 
-            getRepeatedTasks().forEach(task -> scheduler.scheduleAtFixedRate(task.asRunnable(), task.getInitialDelay(), task.getPeriod(), task.getTimeUnit()));
+    boolean isConnected();
 
-            MessageIO<I, O> messageIO = getMessageIO();
-            initialized = true;
-            while (isConnected()) {
-                try {
-                    I message = messageIO.read(particle);
-                    if (message != null) onMessage(message, particle);
-                } catch (Particle.ReadException ignore) {}
-            }
-        } catch (IOException e) {
-            throw new ClientException("Failed to connect to server", e);
-        } finally {
-            // Shutdown the scheduler
-            scheduler.shutdown();
-            try {
-                if (!scheduler.awaitTermination(60, TimeUnit.SECONDS)) {
-                    scheduler.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                scheduler.shutdownNow();
-            }
-        }
-    }
+    Particle getParticle();
 
-    public final void disconnect() throws ClientException {
-        try {
-            socket.close();
-            onDisconnect();
-        } catch (IOException e) {
-            throw new ClientException("Failed to disconnect from server", e);
-        }
-    }
+    String getHost();
 
-    public final void ping() {
-        try {
-            particle.writeInt(0);
-        } catch (Particle.WriteException e) {
-            try {
-                disconnect();
-            } catch (ClientException ex) {
-                System.out.println(ex.getMessage());
-            }
-        }
-    }
-
-    public final void send(O message) throws ClientException {
-        try {
-            getMessageIO().write(message, particle);
-        } catch (Particle.WriteException e) {
-            throw new ClientException("Failed to send message", e);
-        }
-    }
-
-    public final boolean isConnected() {
-        return socket != null && socket.isConnected() && !socket.isClosed();
-    }
-
-    public Particle getParticle() {
-        if (!initialized) throw new IllegalStateException("Client connection not initialized");
-        return particle;
-    }
-
-    public abstract String getHost();
-
-    public abstract int getPort();
+    int getPort();
 
     @NotNull
-    public abstract List<Task> getRepeatedTasks();
+    List<Task> getRepeatedTasks();
 
     @NotNull
-    public abstract MessageIO<I, O> getMessageIO();
+    MessageIO<I, O> getMessageIO();
 
-    public abstract void onConnect(Particle particle) throws ClientException;
+    void onConnect(Particle particle) throws ClientException;
 
-    public abstract void onMessage(I message, Particle particle) throws ClientException;
+    void onMessage(I message, Particle particle) throws ClientException;
 
-    public abstract void onDisconnect() throws ClientException;
-
-    public String getIPAddress() {
-        return socket.getInetAddress().getHostAddress();
-    }
-
-    public String getRemoteIPAddress() {
-        return ((InetSocketAddress) socket.getRemoteSocketAddress()).getAddress().getHostName();
-    }
-
-    public static <I, O> Client<I, O> wrap(Socket socket) throws IOException {
-        Client<I, O> client = new Client<>() {
-            @Override
-            public String getHost() {
-                return socket.getInetAddress().getHostName();
-            }
-
-            @Override
-            public int getPort() {
-                return socket.getPort();
-            }
-
-            @Override
-            public @NotNull List<Task> getRepeatedTasks() {
-                return List.of();
-            }
-
-            @Override
-            public @NotNull MessageIO<I, O> getMessageIO() {
-                return new MessageIO<>() {
-                    @Override
-                    public I read(Particle particle) {
-                        return null;
-                    }
-
-                    @Override
-                    public void write(O message, Particle particle) {
-
-                    }
-                };
-            }
-
-            @Override
-            public void onConnect(Particle particle) throws ClientException {
-                // Nothing
-            }
-
-            @Override
-            public void onMessage(I message, Particle particle) throws ClientException {
-                // Nothing
-            }
-
-            @Override
-            public void onDisconnect() throws ClientException {
-                // Nothing
-            }
-        };
-        client.socket = socket;
-        client.particle = new Particle(new DataInputStream(socket.getInputStream()), new DataOutputStream(socket.getOutputStream()));
-        client.initialized = true;
-        return client;
-    }
-
+    void onDisconnect() throws ClientException;
 }

@@ -2,174 +2,57 @@ package dev.xernas.particle.server;
 
 import dev.xernas.particle.Particle;
 import dev.xernas.particle.client.Client;
-import dev.xernas.particle.client.exceptions.ClientException;
+import dev.xernas.particle.client.TCPClient;
 import dev.xernas.particle.message.MessageIO;
 import dev.xernas.particle.server.exceptions.ServerException;
-import dev.xernas.particle.tasks.PingTask;
 import dev.xernas.particle.tasks.Task;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.IOException;
-import java.net.ServerSocket;
-import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
-public abstract class Server<I, O> {
+public interface Server<I, O> {
 
-    private final Map<UUID, Client<I, O>> connected = new HashMap<>();
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
+    void listen() throws ServerException;
 
-    private boolean running = false;
-    private static boolean debug = false;
-
-    public final void listen() throws ServerException {
-        try (ServerSocket server = new ServerSocket(getPort())) {
-            running = true;
-            onServerStart();
-
-            PingTask<I, O> pingTask = new PingTask<>(this);
-            scheduler.scheduleAtFixedRate(pingTask.asRunnable(), pingTask.getInitialDelay(), pingTask.getPeriod(), pingTask.getTimeUnit());
-
-            getRepeatedTasks().forEach(task -> scheduler.scheduleAtFixedRate(task.asRunnable(), task.getInitialDelay(), task.getPeriod(), task.getTimeUnit()));
-
-            while (isRunning()) {
-                Client<I, O> client = Client.wrap(server.accept());
-                new Thread(new ClientHandler<>(client.getParticle(), this, client)).start();
-            }
-        } catch (IOException e) {
-            throw new ServerException("Failed to start server", e);
-        } finally {
-            shutdownScheduler();
-            onServerStop();
-        }
-    }
-
-    private void shutdownScheduler() {
-        System.out.println("Shutting down scheduler");
-        scheduler.shutdown();
-        try {
-            if (!scheduler.awaitTermination(60, TimeUnit.SECONDS)) {
-                scheduler.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            scheduler.shutdownNow();
-        }
-    }
-
-    public abstract int getPort();
+    int getPort();
 
     @NotNull
-    public abstract List<Task> getRepeatedTasks();
+    List<Task> getRepeatedTasks();
 
-    @NotNull
-    public abstract MessageIO<I, O> getMessageIO(UUID clientId);
+    MessageIO<I, O> getMessageIO(UUID clientId);
 
-    public abstract void onServerStart() throws ServerException;
+    void onServerStart() throws ServerException;
 
-    public abstract void onClientConnect(UUID clientId, Particle particle) throws ServerException;
+    void onClientConnect(UUID clientId, Particle particle) throws ServerException;
 
-    public abstract void onMessage(UUID clientId, I message, Particle particle) throws ServerException;
+    void onMessage(UUID clientId, I message, Particle particle) throws ServerException;
 
-    public abstract void onClientDisconnect(UUID clientId, Particle particle) throws ServerException;
+    void onClientDisconnect(UUID clientId, Particle particle) throws ServerException;
 
-    public abstract void onClientConnectionEnd(UUID clientId, Client<I, O> disconnectedClient) throws ServerException;
+    void onClientConnectionEnd(UUID clientId, Client<I, O> disconnectedClient) throws ServerException;
 
-    public abstract void onServerStop() throws ServerException;
+    void onServerStop() throws ServerException;
 
-    public final UUID newConnectedClient(Client<I, O> client) {
-        UUID clientId;
-        do {
-            clientId = UUID.randomUUID();
-        } while (connected.containsKey(clientId));
-        connected.put(clientId, client);
-        return clientId;
-    }
+    UUID newConnectedClient(Client<I, O> client) throws ServerException;
 
-    public final Client<I, O> removeConnectedClient(UUID clientId) {
-        return connected.remove(clientId);
-    }
+    Client<I, O> removeConnectedClient(UUID clientId) throws ServerException;
 
-    public final void forceDisconnectClient(UUID clientId) throws ServerException {
-        Client<I, O> client = getClient(clientId);
-        if (client == null) {
-            throw new ServerException("Client not found");
-        }
+    void forceDisconnect(UUID clientId) throws ServerException;
 
-        try {
-            onClientDisconnect(clientId, client.getParticle());
-        } catch (ServerException ignore) {}
-        removeConnectedClient(clientId);
-        try {
-            client.disconnect();
-        } catch (ClientException e) {
-            throw new ServerException("Failed to disconnect client", e);
-        }
-    }
+    boolean ping(UUID clientId) throws ServerException;
 
-    public final boolean ping(UUID clientId) throws ServerException {
-        Client<I, O> client = getClient(clientId);
-        if (client == null) {
-            throw new ServerException("Client not found");
-        }
-        try {
-            client.getParticle().writeInt(0);
-        } catch (Particle.WriteException e) {
-            return false;
-        }
-        return true;
-    }
+    void pingAll() throws ServerException;
 
-    public final void ping() throws ServerException {
-        List<UUID> toPing = new ArrayList<>(connected.keySet());
-        for (UUID clientId : toPing) {
-            if (!ping(clientId)) forceDisconnectClient(clientId);
-        }
-    }
+    void send(UUID clientId, O message) throws ServerException;
 
-    public final void send(UUID clientId, O message) throws ServerException {
-        Client<I, O> client = getClient(clientId);
-        if (client == null) {
-            System.err.println("Client not found");
-            return;
-        }
-        try {
-            getMessageIO(clientId).write(message, client.getParticle());
-        } catch (Particle.WriteException e) {
-            throw new ServerException("Failed to send message", e);
-        }
-    }
+    void broadcast(O message) throws ServerException;
 
-    public final void broadcast(O message) throws ServerException {
-        for (UUID clientId : connected.keySet()) send(clientId, message);
-    }
+    Client<I, O> getClient(UUID clientId);
 
-    public static void debug(boolean debug) {
-        if (debug) {
-            System.out.println("Debugging");
-        }
-        Server.debug = debug;
-    }
+    Map<UUID, Client<I, O>> getConnectedClients();
 
-    public final Client<I, O> getClient(UUID clientId) {
-        return connected.get(clientId);
-    }
+    boolean isRunning();
 
-    public final Map<UUID, Client<I, O>> getConnectedClients()
-    {
-        return connected;
-    }
-
-    public final void stop() {
-        running = false;
-    }
-
-    public final boolean isRunning() {
-        return running;
-    }
-
-    public static boolean isDebugEnabled() {
-        return debug;
-    }
 }

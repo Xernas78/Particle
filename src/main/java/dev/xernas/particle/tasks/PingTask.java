@@ -1,7 +1,9 @@
 package dev.xernas.particle.tasks;
 
 import dev.xernas.particle.client.Client;
+import dev.xernas.particle.client.TCPClient;
 import dev.xernas.particle.server.Server;
+import dev.xernas.particle.server.TCPServer;
 import dev.xernas.particle.server.exceptions.ServerException;
 import org.jetbrains.annotations.NotNull;
 
@@ -22,7 +24,7 @@ public class PingTask<I, O> implements Task {
 
     @Override
     public void run() throws ServerException {
-        if (server != null) server.ping();
+        if (server != null) server.pingAll();
         if (client != null) client.ping();
     }
 

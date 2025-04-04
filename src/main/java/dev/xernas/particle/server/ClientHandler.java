@@ -2,6 +2,7 @@ package dev.xernas.particle.server;
 
 import dev.xernas.particle.Particle;
 import dev.xernas.particle.client.Client;
+import dev.xernas.particle.client.TCPClient;
 import dev.xernas.particle.message.MessageIO;
 import dev.xernas.particle.server.exceptions.ServerException;
 
@@ -34,7 +35,7 @@ public class ClientHandler<I, O> implements Runnable {
                             if (message != null) server.onMessage(clientId, message, particle);
                         }
                     } catch (Particle.ReadException e) {
-                        if (Server.isDebugEnabled()) {
+                        if (TCPServer.isDebugEnabled()) {
                             e.printStackTrace();
                             System.out.println("Failed to read message: " + e.getMessage());
                         }
