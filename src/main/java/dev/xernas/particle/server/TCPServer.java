@@ -60,10 +60,6 @@ public abstract class TCPServer<I, O> implements Server<I, O> {
         }
     }
 
-    public abstract MessageIO<I, O> getMessageIO(UUID clientId);
-
-    public abstract void onClientDisconnect(UUID clientId, Particle particle) throws ServerException;
-
     @Override
     public final UUID newConnectedClient(Client<I, O> client) {
         UUID clientId;

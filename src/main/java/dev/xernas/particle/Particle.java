@@ -6,12 +6,23 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.DatagramSocket;
 import java.nio.ByteBuffer;
 
 public class Particle {
 
     private final DataInputStream in;
     private final DataOutputStream out;
+
+    public Particle(boolean UDPSystem) {
+        if (UDPSystem) {
+            this.in = new DataInputStream(System.in);
+            this.out = new DataOutputStream(System.out);
+        } else {
+            this.in = null;
+            this.out = null;
+        }
+    }
 
     public Particle(DataInputStream in) {
         this.in = in;
@@ -198,6 +209,30 @@ public class Particle {
         } catch (Exception e) {
             throw new ParticleException("Failed to close", e);
         }
+    }
+
+    public  static void sendUDP(byte[] data, DatagramSocket socket) throws WriteException {
+        try {
+            socket.send(new java.net.DatagramPacket(data, data.length));
+        } catch (IOException e) {
+            throw new WriteException("Failed to send UDP packet", e);
+        }
+    }
+
+    public static void sendUDP(String data, DatagramSocket socket) throws WriteException {
+        byte[] bytes = data.getBytes();
+        sendUDP(bytes, socket);
+    }
+
+    public static void sendUDP(ByteBuffer data, DatagramSocket socket) throws WriteException {
+        byte[] bytes = new byte[data.remaining()];
+        data.get(bytes);
+        sendUDP(bytes, socket);
+    }
+
+    public static void sendUDP(int data, DatagramSocket socket) throws WriteException {
+        ByteBuffer bytes = ByteBuffer.allocate(4).putInt(data);
+        sendUDP(bytes, socket);
     }
 
     public static class WriteException extends ParticleException {

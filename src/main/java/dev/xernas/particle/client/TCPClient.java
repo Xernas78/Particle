@@ -31,6 +31,10 @@ public abstract class TCPClient<I, O> implements Client<I, O> {
         try (Socket socket = new Socket(getHost(), getPort())) {
             this.socket = socket;
             this.particle = new Particle(new DataInputStream(socket.getInputStream()), new DataOutputStream(socket.getOutputStream()));
+            boolean success = ping();
+            if (!success) {
+                throw new ClientException("Failed to ping server");
+            }
             onConnect(particle);
 
             PingTask<I, O> pingTask = new PingTask<>(this);
@@ -72,15 +76,17 @@ public abstract class TCPClient<I, O> implements Client<I, O> {
     }
 
     @Override
-    public final void ping() {
+    public final boolean ping() {
         try {
             particle.writeInt(0);
+            return true;
         } catch (Particle.WriteException e) {
             try {
                 disconnect();
             } catch (ClientException ex) {
                 System.out.println(ex.getMessage());
             }
+            return false;
         }
     }
 

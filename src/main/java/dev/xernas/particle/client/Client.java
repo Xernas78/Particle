@@ -14,7 +14,7 @@ public interface Client<I, O> {
 
     void disconnect() throws ClientException;
 
-    void ping();
+    boolean ping();
 
     void send(O message) throws ClientException;
 
