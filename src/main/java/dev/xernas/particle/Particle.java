@@ -1,12 +1,14 @@
 package dev.xernas.particle;
 
 import dev.xernas.particle.utils.ByteBufferInputStream;
+import dev.xernas.particle.utils.Host;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
 public class Particle {
@@ -194,6 +196,21 @@ public class Particle {
         }
     }
 
+    public byte[] readEveryBytes() throws ReadException {
+        try {
+            ByteBuffer buffer = ByteBuffer.allocate(1024);
+            int bytesRead;
+            while ((bytesRead = in().read(buffer.array())) != -1) {
+                buffer.position(buffer.position() + bytesRead);
+            }
+            byte[] result = new byte[buffer.position()];
+            System.arraycopy(buffer.array(), 0, result, 0, buffer.position());
+            return result;
+        } catch (IOException e) {
+            throw new ReadException("Failed to read every bytes", e);
+        }
+    }
+
     public void flush() throws WriteException {
         try {
             out().flush();
@@ -211,28 +228,28 @@ public class Particle {
         }
     }
 
-    public  static void sendUDP(byte[] data, DatagramSocket socket) throws WriteException {
+    public static void sendUDP(byte[] data, DatagramSocket socket, Host to) throws WriteException {
         try {
-            socket.send(new java.net.DatagramPacket(data, data.length));
+            socket.send(new java.net.DatagramPacket(data, data.length, new InetSocketAddress(to.host(), to.port())));
         } catch (IOException e) {
             throw new WriteException("Failed to send UDP packet", e);
         }
     }
 
-    public static void sendUDP(String data, DatagramSocket socket) throws WriteException {
+    public static void sendUDP(String data, DatagramSocket socket, Host to) throws WriteException {
         byte[] bytes = data.getBytes();
-        sendUDP(bytes, socket);
+        sendUDP(bytes, socket, to);
     }
 
-    public static void sendUDP(ByteBuffer data, DatagramSocket socket) throws WriteException {
+    public static void sendUDP(ByteBuffer data, DatagramSocket socket, Host to) throws WriteException {
         byte[] bytes = new byte[data.remaining()];
         data.get(bytes);
-        sendUDP(bytes, socket);
+        sendUDP(bytes, socket, to);
     }
 
-    public static void sendUDP(int data, DatagramSocket socket) throws WriteException {
+    public static void sendUDP(int data, DatagramSocket socket, Host to) throws WriteException {
         ByteBuffer bytes = ByteBuffer.allocate(4).putInt(data);
-        sendUDP(bytes, socket);
+        sendUDP(bytes, socket, to);
     }
 
     public static class WriteException extends ParticleException {
